@@ -1,0 +1,55 @@
+{
+  "manifest_version": "0.4",
+  "name": "@nimblebraininc/brave-search",
+  "version": "0.1.0",
+  "description": "Web search using the Brave Search API",
+  "author": {
+    "name": "NimbleBrain Inc",
+    "email": "hello@nimblebrain.ai"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NimbleBrainInc/mcp-brave-search"
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "Brave Search API Key",
+      "description": "Get your API key from https://brave.com/search/api/",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "server": {
+    "type": "python",
+    "entry_point": "mcp_brave_search.server",
+    "mcp_config": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_brave_search.server"
+      ],
+      "env": {
+        "BRAVE_SEARCH_API_KEY": "${user_config.api_key}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "web_search",
+      "description": "Search the web using Brave Search"
+    }
+  ],
+  "_meta": {
+    "org.mpaktrust": {
+      "mtf_version": "0.1",
+      "permissions": {
+        "filesystem": "none",
+        "network": "outbound",
+        "environment": "read",
+        "subprocess": "none",
+        "native": "none"
+      }
+    }
+  }
+}
