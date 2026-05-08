@@ -1,12 +1,13 @@
 {
   "manifest_version": "0.4",
   "name": "@nimblebraininc/brave-search",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Web search using the Brave Search API",
   "author": {
     "name": "NimbleBrain Inc",
     "email": "hello@nimblebrain.ai"
   },
+  "icon": "https://static.nimblebrain.ai/icons/brave.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/NimbleBrainInc/mcp-brave-search"
