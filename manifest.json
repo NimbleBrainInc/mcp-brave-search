@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.4",
   "name": "@nimblebraininc/brave-search",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Web search using the Brave Search API",
   "author": {
     "name": "NimbleBrain Inc",
