@@ -5,13 +5,17 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from .api_client import APIError, BraveSearchClient
 from .api_models import WebSearchResponse
 
+# Diagnostics go to stderr (stdout is reserved for JSON-RPC), never to the client: MCP's
+# logging capability is deprecated as of the 2026-07-28 protocol (SEP-2577). A failure the
+# caller must see is raised as a ToolError.
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -27,13 +31,18 @@ _client: BraveSearchClient | None = None
 
 
 def get_client() -> BraveSearchClient:
-    """Get or create the Brave Search client."""
+    """Get or create the Brave Search client.
+
+    Raises:
+        ToolError: when BRAVE_SEARCH_API_KEY is not set, so the caller sees why the tool failed.
+    """
     global _client
     if _client is None:
         api_key = os.environ.get("BRAVE_SEARCH_API_KEY")
         if not api_key:
-            raise ValueError(
-                "BRAVE_SEARCH_API_KEY is required. "
+            logger.error("BRAVE_SEARCH_API_KEY is not set")
+            raise ToolError(
+                "BRAVE_SEARCH_API_KEY environment variable is required. "
                 "Get your API key from https://brave.com/search/api/"
             )
         _client = BraveSearchClient(api_key=api_key)
@@ -53,7 +62,6 @@ async def web_search(
     safesearch: str = "moderate",
     freshness: str | None = None,
     country: str = "us",
-    ctx: Context | None = None,
 ) -> WebSearchResponse:
     """Search the web using Brave Search.
 
@@ -63,15 +71,12 @@ async def web_search(
         safesearch: Safe search filter level: "off", "moderate", or "strict" (default: "moderate").
         freshness: Time filter: "pd" (past day), "pw" (past week), "pm" (past month), "py" (past year).
         country: 2-letter country code (default: "us").
-        ctx: MCP context.
 
     Returns:
         Search results with titles, URLs, and descriptions.
     """
     client = get_client()
-
-    if ctx:
-        await ctx.info(f"Searching Brave for: {query[:80]}...")
+    logger.info("Searching Brave for: %s", query[:80])
 
     try:
         return await client.search(
@@ -82,9 +87,8 @@ async def web_search(
             country=country,
         )
     except APIError as e:
-        if ctx:
-            await ctx.error(f"Brave Search API error: {e.message}")
-        raise
+        logger.warning("web_search failed: %s", e.message)
+        raise ToolError(f"Brave Search API error: {e.message}") from e
 
 
 # ASGI entrypoint (nimbletools-core container deployment)

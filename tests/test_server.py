@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastmcp import Client
 
+from mcp_brave_search.api_client import APIError
 from mcp_brave_search.api_models import SearchResult, WebSearchResponse
 from mcp_brave_search.server import mcp
 
@@ -120,3 +121,33 @@ def test_web_search_response_model() -> None:
     assert response.query == "test"
     assert response.results == []
     assert response.total_results == 0
+
+
+@pytest.mark.asyncio
+async def test_api_error_is_reported_as_tool_error() -> None:
+    """An upstream API failure reaches the caller as an error result with its message."""
+    with patch("mcp_brave_search.server.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+        mock_client.search.side_effect = APIError(429, "Rate limit exceeded")
+        mock_get_client.return_value = mock_client
+
+        async with Client(mcp) as client:
+            result = await client.call_tool("web_search", {"query": "test"}, raise_on_error=False)
+
+        assert result.is_error
+        assert "Rate limit exceeded" in result.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_missing_api_key_is_reported_as_tool_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without an API key the caller learns which variable to set."""
+    monkeypatch.delenv("BRAVE_SEARCH_API_KEY", raising=False)
+    monkeypatch.setattr("mcp_brave_search.server._client", None)
+
+    async with Client(mcp) as client:
+        result = await client.call_tool("web_search", {"query": "test"}, raise_on_error=False)
+
+    assert result.is_error
+    assert "BRAVE_SEARCH_API_KEY" in result.content[0].text
